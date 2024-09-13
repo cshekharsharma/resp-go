@@ -53,6 +53,18 @@ func Encode(value interface{}) (string, error) {
 		}
 		return resp, nil
 
+	case []string:
+		resp := "*" + strconv.Itoa(len(v)) + "\r\n"
+		for _, elem := range v {
+			encodedElem, err := Encode(elem)
+			if err != nil {
+				return "", err
+			}
+
+			resp += encodedElem
+		}
+		return resp, nil
+
 	case bool:
 		if v {
 			return "#t\r\n", nil

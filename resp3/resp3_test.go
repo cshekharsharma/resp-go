@@ -99,6 +99,14 @@ var testCases = []testCase{
 		IsDecodeTC:        true,
 	},
 	{
+		Description:       "Array of Strings",
+		Input:             []string{"my", "test"},
+		ExpectedEncOutput: "*2\r\n$2\r\nmy\r\n$4\r\ntest\r\n",
+		ExpectedDecOutput: []interface{}{"my", "test"},
+		IsEncodeTC:        true,
+		IsDecodeTC:        true,
+	},
+	{
 		Description: "Map map[string]interface{}",
 		Input: map[string]interface{}{
 			"age":       30,
