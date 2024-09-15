@@ -109,6 +109,33 @@ func Decode(reader *bufio.Reader) (interface{}, error) {
 		}
 		return string(value), nil
 
+	case '=': // Verbatim String
+		lengthStr, _, err := reader.ReadLine()
+		if err != nil {
+			return nil, err
+		}
+
+		length, err := strconv.Atoi(string(lengthStr))
+		if err != nil {
+			return nil, err
+		}
+
+		if length == -1 {
+			return nil, nil // Null verbatim string
+		}
+
+		if length == 0 {
+			return "", nil // Empty verbatim string
+		}
+
+		value := make([]byte, length)
+		_, err = reader.Read(value)
+		if err != nil {
+			return nil, err
+		}
+		reader.Discard(2) // Discard trailing \r\n
+		return string(value), nil
+
 	case '*': // Array
 		countStr, _, err := reader.ReadLine()
 		if err != nil {
@@ -149,17 +176,71 @@ func Decode(reader *bufio.Reader) (interface{}, error) {
 	case '%': // Map of interface{}
 		line, _, _ := reader.ReadLine()
 		size, _ := strconv.Atoi(string(line))
-		resultMap := make(map[string]interface{}, size/2)
+
+		// Temporary map to hold keys and values
+		tempMap := make(map[interface{}]interface{}, size/2)
+		isAllStringKeys := true
+		isAllInt64Keys := true
+
 		for i := 0; i < size; i += 2 {
 			key, _ := Decode(reader)
 			value, _ := Decode(reader)
-			if key != nil {
-				if key, ok := key.(string); ok {
-					resultMap[key] = value
-				}
+
+			if key == nil {
+				continue // Skip if the key is nil
 			}
+
+			switch key.(type) {
+			case string:
+				isAllInt64Keys = false // Mark that not all keys are int64
+			case int64:
+				isAllStringKeys = false // Mark that not all keys are strings
+			default:
+				isAllStringKeys = false
+				isAllInt64Keys = false
+			}
+
+			tempMap[key] = value
 		}
-		return resultMap, nil
+
+		// Based on the keys' types, return the appropriate map type
+		if isAllStringKeys {
+			finalMap := make(map[string]interface{}, size/2)
+			for k, v := range tempMap {
+				finalMap[k.(string)] = v
+			}
+			return finalMap, nil
+		}
+
+		if isAllInt64Keys {
+			finalMap := make(map[int64]interface{}, size/2)
+			for k, v := range tempMap {
+				finalMap[k.(int64)] = v
+			}
+			return finalMap, nil
+		}
+
+		// Otherwise, return the generic map[interface{}]interface{}
+		return tempMap, nil
+
+	case '!': // Blob Error
+		lengthStr, _, err := reader.ReadLine()
+		if err != nil {
+			return nil, err
+		}
+
+		length, err := strconv.Atoi(string(lengthStr))
+		if err != nil {
+			return nil, err
+		}
+
+		value := make([]byte, length)
+		_, err = reader.Read(value)
+		if err != nil {
+			return nil, err
+		}
+		reader.Discard(2)
+		return errors.New(string(value)), nil
 
 	case '_':
 		reader.Discard(2) // Discard the trailing \r\n
