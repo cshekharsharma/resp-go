@@ -39,7 +39,7 @@ func Decode(reader *bufio.Reader) (interface{}, error) {
 
 	switch dataType {
 	case '+': // Simple String
-		line, _, err := reader.ReadLine()
+		line, err := readLineCRLF(reader)
 
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			return nil, io.ErrUnexpectedEOF
@@ -52,7 +52,7 @@ func Decode(reader *bufio.Reader) (interface{}, error) {
 		return string(line), nil
 
 	case '-': // Error
-		line, _, err := reader.ReadLine()
+		line, err := readLineCRLF(reader)
 
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			return nil, io.ErrUnexpectedEOF
@@ -65,7 +65,7 @@ func Decode(reader *bufio.Reader) (interface{}, error) {
 		return errors.New(string(line)), nil
 
 	case ':': // Integer
-		line, _, err := reader.ReadLine()
+		line, err := readLineCRLF(reader)
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			return nil, io.ErrUnexpectedEOF
 		}
@@ -84,7 +84,7 @@ func Decode(reader *bufio.Reader) (interface{}, error) {
 		return int64(xint), nil
 
 	case ',': // Float
-		line, _, err := reader.ReadLine()
+		line, err := readLineCRLF(reader)
 
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			return nil, io.ErrUnexpectedEOF
@@ -101,7 +101,7 @@ func Decode(reader *bufio.Reader) (interface{}, error) {
 		return float64(xfloat), nil
 
 	case '$': // Bulk String
-		lengthStr, _, err := reader.ReadLine()
+		lengthStr, err := readLineCRLF(reader)
 
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			return nil, io.ErrUnexpectedEOF
@@ -142,7 +142,7 @@ func Decode(reader *bufio.Reader) (interface{}, error) {
 		return string(value), nil
 
 	case '=': // Verbatim String
-		lengthStr, _, err := reader.ReadLine()
+		lengthStr, err := readLineCRLF(reader)
 
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			return nil, io.ErrUnexpectedEOF
@@ -183,7 +183,7 @@ func Decode(reader *bufio.Reader) (interface{}, error) {
 		return string(value), nil
 
 	case '*': // Array
-		countStr, _, err := reader.ReadLine()
+		countStr, err := readLineCRLF(reader)
 
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			return nil, io.ErrUnexpectedEOF
@@ -238,7 +238,7 @@ func Decode(reader *bufio.Reader) (interface{}, error) {
 		return b == 't', nil
 
 	case '%': // Map of interface{}
-		line, _, _ := reader.ReadLine()
+		line, _ := readLineCRLF(reader)
 		size, _ := strconv.Atoi(string(line))
 
 		tempMap := make(map[interface{}]interface{}, size/2)
@@ -304,7 +304,7 @@ func Decode(reader *bufio.Reader) (interface{}, error) {
 		return tempMap, nil
 
 	case '!': // Blob Error
-		lengthStr, _, err := reader.ReadLine()
+		lengthStr, err := readLineCRLF(reader)
 
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			return nil, io.ErrUnexpectedEOF
